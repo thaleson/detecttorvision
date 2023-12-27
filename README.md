@@ -36,6 +36,7 @@ streamlit run app.py
 ```
 ## Desenvolvedor
 ```Nome: Thaleson Silva```
+
 ```Contato: thaleson19@hotmail.com```
 
 ## Agradecimentos
