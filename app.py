@@ -49,7 +49,7 @@ def detect_objects(frame):
                           (endX, endY), (0, 255, 0), 2)
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
     return frame
 
@@ -91,7 +91,7 @@ def main():
 
     if st.button("Sobre este app"):
      st.text(
-    """Sobre o Aplicativo de Detecção de Objetos:
+         """Sobre o Aplicativo de Detecção de Objetos:
 
 Este aplicativo utiliza um modelo de detecção de objetos baseado na arquitetura MobileNetSSD. O modelo foi treinado para identificar diversas classes, incluindo, mas não se limitando a aviões, bicicletas, pássaros, barcos, portas, ônibus, carros, gatos, cadeiras, vacas, mesas de jantar, cachorros, cavalos, motos, pessoas, plantas em vasos, ovelhas, sofás, trens e monitores de TV. 🌍📷
 
@@ -120,7 +120,6 @@ Desenvolvedor:
 Este aplicativo foi desenvolvido por Thaleson Silva. Sou apaixonado por inteligência artificial e visão computacional, e este projeto é resultado do interesse em tornar essas tecnologias mais acessíveis. Espero que você aproveite a experiência de explorar o mundo da detecção de objetos com este aplicativo. 🚀
 
 Agradecemos por usar nosso aplicativo e ficamos abertos a feedbacks e sugestões para melhorias futuras. Divirta-se explorando a detecção de objetos! 🙌""")
-
 
 
 if __name__ == "__main__":
