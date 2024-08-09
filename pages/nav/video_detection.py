@@ -40,12 +40,10 @@ def detect_objects(frame, confidence_threshold):
             endX = min(frame.shape[1], endX)
             endY = min(frame.shape[0], endY)
 
-            # Verifique se as coordenadas são válidas
-            if startX < endX and startY < endY:
-                cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
-                y = startY - 15 if startY - 15 > 15 else startY + 15
-                cv2.putText(frame, label, (startX, y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
+            y = startY - 15 if startY - 15 > 15 else startY + 15
+            cv2.putText(frame, label, (startX, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
     return frame
 
