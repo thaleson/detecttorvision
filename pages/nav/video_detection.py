@@ -4,6 +4,7 @@ import streamlit as st
 import tempfile
 import os
 from pytube import YouTube
+from pytube.exceptions import PytubeError
 
 def detect_objects(frame, net, confidence_threshold):
     (h, w) = frame.shape[:2]
@@ -25,11 +26,19 @@ def download_video_from_youtube(url):
     try:
         yt = YouTube(url)
         video_stream = yt.streams.filter(file_extension='mp4').first()
+        if video_stream is None:
+            raise ValueError("Não foi possível encontrar um fluxo de vídeo MP4.")
         temp_filename = tempfile.mktemp(suffix=".mp4")
         video_stream.download(filename=temp_filename)
         return temp_filename
+    except PytubeError as e:
+        st.error(f"Erro ao usar pytube: {e}")
+        return None
+    except ValueError as e:
+        st.error(f"Erro de valor: {e}")
+        return None
     except Exception as e:
-        st.error(f"Erro ao baixar o vídeo do YouTube: {e}")
+        st.error(f"Erro desconhecido ao baixar o vídeo do YouTube: {e}")
         return None
 
 def show_video_detection():
