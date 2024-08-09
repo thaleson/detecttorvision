@@ -3,7 +3,7 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
-import time  # Importa o módulo time
+import time
 
 # Carregue o modelo usando OpenCV (Caffe)
 net = cv2.dnn.readNetFromCaffe(
@@ -16,9 +16,7 @@ CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
            "sofá", "trem", "monitor de TV"]
 
 def detect_objects(frame, confidence_threshold):
-    # Reduz a resolução do frame
     frame = cv2.resize(frame, (600, 400))  # Ajuste a resolução conforme necessário
-    
     blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
     net.setInput(blob)
     detections = net.forward()
@@ -57,10 +55,11 @@ def show_video_detection():
 
     if uploaded_file is not None:
         st.write("Processando vídeo...")
-        tfile = tempfile.NamedTemporaryFile(delete=False)
-        tfile.write(uploaded_file.read())
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as tfile:
+            tfile.write(uploaded_file.read())
+            temp_file_path = tfile.name
 
-        video = cv2.VideoCapture(tfile.name)
+        video = cv2.VideoCapture(temp_file_path)
         stframe = st.empty()
 
         # Ajuste da taxa de quadros
@@ -83,7 +82,7 @@ def show_video_detection():
 
         # Tratamento para o erro PermissionError
         try:
-            os.remove(tfile.name)
+            os.remove(temp_file_path)
         except PermissionError:
             st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
