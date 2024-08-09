@@ -23,11 +23,17 @@ def show_video_detection():
 
     if st.session_state.video_file:
         # Salve o arquivo de vídeo temporariamente
-        temp_video_path = "temp_video"
+        temp_video_path = "temp_video.mp4"
         with open(temp_video_path, "wb") as f:
             f.write(st.session_state.video_file.read())
         
         st.write(f"Tentando abrir o arquivo de vídeo: {temp_video_path}")
+        
+        # Verifique se o arquivo foi salvo corretamente
+        if not os.path.exists(temp_video_path):
+            st.error(f"Arquivo de vídeo não encontrado no caminho: {temp_video_path}")
+            return
+        
         cap = cv2.VideoCapture(temp_video_path)
         
         if not cap.isOpened():
