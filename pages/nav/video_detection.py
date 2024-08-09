@@ -6,8 +6,9 @@ import numpy as np
 import time
 
 # Carregue o modelo usando OpenCV (Caffe)
-net = cv2.dnn.readNetFromCaffe(
-    'MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
+def load_model():
+    return cv2.dnn.readNetFromCaffe(
+        'MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
 
 # Mapeamento de classes
 CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
@@ -15,7 +16,7 @@ CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
            "cachorro", "cavalo", "moto", "pessoa", "planta em vaso", "ovelha",
            "sofá", "trem", "monitor de TV"]
 
-def detect_objects(frame, confidence_threshold):
+def detect_objects(frame, net, confidence_threshold):
     blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
     net.setInput(blob)
     detections = net.forward()
@@ -38,6 +39,29 @@ def detect_objects(frame, confidence_threshold):
 
     return frame
 
+def initialize_video(uploaded_file):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
+        tfile.write(uploaded_file.read())
+        temp_filename = tfile.name
+    return cv2.VideoCapture(temp_filename), temp_filename
+
+def show_video_controls():
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("▶️ Play"):
+            st.session_state.playing = True
+            st.session_state.video_status = "Vídeo em reprodução..."
+    with col2:
+        if st.button("⏸️ Pausar"):
+            st.session_state.playing = False
+            st.session_state.video_status = "Vídeo pausado."
+    with col3:
+        if st.button("⏹️ Parar"):
+            st.session_state.playing = False
+            st.session_state.video_status = "Vídeo parado."
+            st.session_state.video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Volta ao início do vídeo
+    st.write(st.session_state.video_status)
+
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo")
 
@@ -45,8 +69,6 @@ def show_video_detection():
         st.session_state.playing = False
     if 'video_status' not in st.session_state:
         st.session_state.video_status = ""
-    if 'speed' not in st.session_state:
-        st.session_state.speed = 1.0
     if 'video_position' not in st.session_state:
         st.session_state.video_position = 0
     if 'video_file' not in st.session_state:
@@ -59,9 +81,9 @@ def show_video_detection():
 
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
-    if uploaded_file is not None:
+    if uploaded_file:
         # Limpar estado anterior
-        if st.session_state.video_capture is not None:
+        if st.session_state.video_capture:
             st.session_state.video_capture.release()
             st.session_state.video_capture = None
         st.session_state.video_position = 0
@@ -69,54 +91,17 @@ def show_video_detection():
 
         st.write("Processando vídeo...")
 
-        # Salvar arquivo temporário
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
-            tfile.write(uploaded_file.read())
-            temp_filename = tfile.name
-            st.session_state.video_file = temp_filename
+        video, temp_filename = initialize_video(uploaded_file)
+        st.session_state.video_capture = video
 
-        # Inicializar captura de vídeo
-        st.session_state.video_capture = cv2.VideoCapture(temp_filename)
-        video = st.session_state.video_capture
+        # Inicializar exibição do frame
         stframe = st.empty()
 
+        # Carregar o modelo
+        net = load_model()
+
         # Controles de vídeo
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("▶️ Play"):
-                st.session_state.playing = True
-                st.session_state.video_status = "Vídeo em reprodução..."
-        with col2:
-            if st.button("⏸️ Pausar"):
-                st.session_state.playing = False
-                st.session_state.video_status = "Vídeo pausado."
-        with col3:
-            if st.button("⏹️ Parar"):
-                st.session_state.playing = False
-                st.session_state.video_status = "Vídeo parado."
-                video.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Volta ao início do vídeo
-
-        # Controles de velocidade
-        st.write("Controle de velocidade:")
-        col4, col5, col6 = st.columns(3)
-        with col4:
-            if st.button("0.5x"):
-                st.session_state.speed = 0.5
-                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
-        with col5:
-            if st.button("1x"):
-                st.session_state.speed = 1.0
-                st.session_state.video_status = "Velocidade ajustada para 1x."
-        with col6:
-            if st.button("1.5x"):
-                st.session_state.speed = 1.5
-                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
-        with col4:
-            if st.button("2x"):
-                st.session_state.speed = 2.0
-                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
-
-        st.write(st.session_state.video_status)
+        show_video_controls()
 
         frame_rate = video.get(cv2.CAP_PROP_FPS)
 
@@ -127,17 +112,17 @@ def show_video_detection():
                 if not ret:
                     break
 
-                result_frame = detect_objects(frame, confidence_threshold=0.2)
+                result_frame = detect_objects(frame, net, confidence_threshold=0.2)
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
 
                 # Atualiza a posição do vídeo
                 st.session_state.video_position = int(video.get(cv2.CAP_PROP_POS_FRAMES))
 
                 # Ajusta a reprodução de acordo com a velocidade selecionada
-                wait_time = (1 / frame_rate) / st.session_state.speed
+                wait_time = (1 / frame_rate)  # Velocidade fixa
                 time.sleep(wait_time)
             else:
-                time.sleep(0.1) 
+                time.sleep(0.1)
 
         video.release()
 
