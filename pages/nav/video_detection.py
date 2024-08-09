@@ -15,6 +15,9 @@ CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
            "sofá", "trem", "monitor de TV"]
 
 def detect_objects(frame, confidence_threshold):
+    if frame is None:
+        return frame
+    
     blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
     net.setInput(blob)
     detections = net.forward()
@@ -30,6 +33,13 @@ def detect_objects(frame, confidence_threshold):
             box = detections[0, 0, i, 3:7] * np.array(
                 [frame.shape[1], frame.shape[0], frame.shape[1], frame.shape[0]])
             (startX, startY, endX, endY) = box.astype("int")
+
+            # Verifique se as coordenadas estão dentro dos limites da imagem
+            startX = max(0, startX)
+            startY = max(0, startY)
+            endX = min(frame.shape[1], endX)
+            endY = min(frame.shape[0], endY)
+
             cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y),
