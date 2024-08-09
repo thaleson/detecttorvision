@@ -56,8 +56,9 @@ def show_video_detection():
 
     if uploaded_file is not None:
         st.write("Processando vídeo...")
-        tfile = tempfile.NamedTemporaryFile(delete=False)
-        tfile.write(uploaded_file.read())
+        
+        with tempfile.NamedTemporaryFile(delete=False) as tfile:
+            tfile.write(uploaded_file.read())
 
         video = cv2.VideoCapture(tfile.name)
         stframe = st.empty()
@@ -111,8 +112,16 @@ def show_video_detection():
                 result_frame = detect_objects(frame, confidence_threshold=0.2)
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
 
-                # Espera para ajustar a reprodução de acordo com a velocidade selecionada
-                time.sleep(1 / (frame_rate * st.session_state.speed))
+                # Ajusta a reprodução de acordo com a velocidade selecionada
+                current_time = time.time()
+                st.session_state.previous_time = current_time
+                wait_time = 1 / (frame_rate * st.session_state.speed)
+
+                # Evita que o loop bloqueie a execução
+                if wait_time > 0:
+                    time.sleep(wait_time)
+            else:
+                time.sleep(0.1)  # Evita o uso excessivo de CPU quando o vídeo está pausado
 
         video.release()
 
