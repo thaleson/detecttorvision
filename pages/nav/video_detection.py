@@ -107,14 +107,19 @@ def show_video_detection():
 
         frame_rate = video.get(cv2.CAP_PROP_FPS)
 
+        # Exibe o vídeo
         while video.isOpened():
             if st.session_state.playing:
+                video.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.video_position)
                 ret, frame = video.read()
                 if not ret:
                     break
 
                 result_frame = detect_objects(frame, confidence_threshold=0.2)
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
+
+                # Atualiza a posição do vídeo
+                st.session_state.video_position = int(video.get(cv2.CAP_PROP_POS_FRAMES))
 
                 # Ajusta a reprodução de acordo com a velocidade selecionada
                 wait_time = (1 / frame_rate) / st.session_state.speed
