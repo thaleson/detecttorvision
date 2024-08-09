@@ -1,7 +1,7 @@
 import streamlit as st
 
 def show_about():
-    st.title("Sobre o Projeto")
+
 
     st.markdown("""
     <h1 style='color: #007BFF;'>Sobre o Projeto</h1>
