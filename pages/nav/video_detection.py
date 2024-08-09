@@ -3,7 +3,6 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
-import time
 
 # Carregue o modelo usando OpenCV (Caffe)
 net = cv2.dnn.readNetFromCaffe(
@@ -41,6 +40,12 @@ def detect_objects(frame, confidence_threshold):
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo")
 
+    # Inicialização do estado da sessão
+    if 'playing' not in st.session_state:
+        st.session_state.playing = True
+    if 'video_status' not in st.session_state:
+        st.session_state.video_status = ""
+
     # Aviso sobre as limitações do modelo
     st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
 
@@ -54,20 +59,20 @@ def show_video_detection():
         video = cv2.VideoCapture(tfile.name)
         stframe = st.empty()
 
+        # Ajuste da taxa de quadros
         frame_rate = video.get(cv2.CAP_PROP_FPS)
-        frame_interval = 1 / frame_rate
 
-        # Processa o vídeo em tempo real
         while video.isOpened():
-            ret, frame = video.read()
-            if not ret:
-                break
+            if st.session_state.playing:
+                ret, frame = video.read()
+                if not ret:
+                    break
 
-            result_frame = detect_objects(frame, confidence_threshold=0.2)
-            stframe.image(result_frame, channels="BGR", use_column_width=True)
+                result_frame = detect_objects(frame, confidence_threshold=0.2)
+                stframe.image(result_frame, channels="BGR", use_column_width=True)
 
-            # Ajusta a velocidade de reprodução
-            time.sleep(frame_interval)
+                # Ajuste da reprodução de acordo com a taxa de quadros
+                cv2.waitKey(int(1000 / frame_rate))
 
         video.release()
 
