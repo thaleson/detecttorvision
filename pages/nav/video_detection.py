@@ -37,7 +37,12 @@ def show_video_detection():
             st.error(f"Não foi possível encontrar os arquivos do modelo: {prototxt_path} e/ou {caffemodel_path}")
             return
         
-        net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+        try:
+            net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+        except Exception as e:
+            st.error(f"Erro ao carregar o modelo: {e}")
+            return
+        
         confidence_threshold = 0.5
         
         cap = cv2.VideoCapture(temp_filename)
@@ -49,9 +54,12 @@ def show_video_detection():
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
         out = cv2.VideoWriter(temp_output_filename, fourcc, 30.0, (int(cap.get(3)), int(cap.get(4))))
         
+        st.write("Processando vídeo...")
+
         while True:
             ret, frame = cap.read()
             if not ret:
+                st.write("Vídeo processado com sucesso.")
                 break
             
             processed_frame = detect_objects(frame, net, confidence_threshold)
@@ -66,3 +74,5 @@ def show_video_detection():
             os.remove(temp_filename)
         if os.path.exists(temp_output_filename):
             os.remove(temp_output_filename)
+
+        st.write("Vídeo exibido com sucesso.")
