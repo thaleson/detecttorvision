@@ -129,11 +129,12 @@ def show_video_detection():
 
         video.release()
 
-        # Tratamento para o erro PermissionError
-        try:
-            os.remove(temp_filename)
-        except PermissionError:
-            st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
+        # Remoção do arquivo temporário com verificação de existência
+        if os.path.exists(temp_filename):
+            try:
+                os.remove(temp_filename)
+            except PermissionError:
+                st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
 if __name__ == "__main__":
     show_video_detection()
