@@ -105,6 +105,8 @@ def show_video_detection():
 
         frame_rate = video.get(cv2.CAP_PROP_FPS)
 
+        previous_time = time.time()
+
         while video.isOpened():
             if st.session_state.playing:
                 ret, frame = video.read()
@@ -114,12 +116,14 @@ def show_video_detection():
                 result_frame = detect_objects(frame, confidence_threshold=0.2)
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
 
-                # Ajusta a reprodução de acordo com a velocidade selecionada
-                wait_time = 1 / (frame_rate * st.session_state.speed)
+                current_time = time.time()
+                elapsed_time = current_time - previous_time
+                wait_time = (1 / frame_rate) / st.session_state.speed
 
-                # Evita que o loop bloqueie a execução
-                if wait_time > 0:
-                    time.sleep(wait_time)
+                if elapsed_time < wait_time:
+                    time.sleep(wait_time - elapsed_time)
+                
+                previous_time = time.time()
             else:
                 time.sleep(0.1)  # Evita o uso excessivo de CPU quando o vídeo está pausado
 
