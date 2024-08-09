@@ -11,8 +11,8 @@ net = cv2.dnn.readNetFromCaffe(
 
 # Mapeamento de classes
 CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
-           "porta", "ônibus", "carro", "gato", "cadeira", "vaca", "mesa de jantar",
-           "cachorro", "cavalo", "moto", "pessoa", "planta em vaso", "ovelha",
+           "porta", "ônibus", "carro", "gato", "cadeira", "cavalo", "mesa de jantar",
+           "cachorro", "moto", "pessoa", "planta em vaso", "ovelha",
            "sofá", "trem", "monitor de TV"]
 
 def detect_objects(frame, confidence_threshold):
@@ -55,36 +55,47 @@ def show_video_detection():
 
     if uploaded_file is not None:
         st.write("Processando vídeo...")
+
+        # Criação de um arquivo temporário
         with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as tfile:
             tfile.write(uploaded_file.read())
             temp_file_path = tfile.name
+            st.write(f"Arquivo temporário criado em: {temp_file_path}")
 
-        video = cv2.VideoCapture(temp_file_path)
-        stframe = st.empty()
-
-        # Ajuste da taxa de quadros
-        frame_rate = video.get(cv2.CAP_PROP_FPS)
-        frame_time = 1.0 / frame_rate  # Tempo para exibir cada frame
-
-        while video.isOpened():
-            if st.session_state.playing:
-                ret, frame = video.read()
-                if not ret:
-                    break
-
-                result_frame = detect_objects(frame, confidence_threshold=0.2)
-                stframe.image(result_frame, channels="BGR", use_column_width=True)
-
-                # Ajusta o tempo de exibição dos frames
-                time.sleep(frame_time)
-
-        video.release()
-
-        # Tratamento para o erro PermissionError
         try:
-            os.remove(temp_file_path)
-        except PermissionError:
-            st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
+            video = cv2.VideoCapture(temp_file_path)
+            stframe = st.empty()
+
+            # Ajuste da taxa de quadros
+            frame_rate = video.get(cv2.CAP_PROP_FPS)
+            frame_time = 1.0 / frame_rate  # Tempo para exibir cada frame
+
+            while video.isOpened():
+                if st.session_state.playing:
+                    ret, frame = video.read()
+                    if not ret:
+                        st.write("Fim do vídeo.")
+                        break
+
+                    result_frame = detect_objects(frame, confidence_threshold=0.2)
+                    stframe.image(result_frame, channels="BGR", use_column_width=True)
+
+                    # Ajusta o tempo de exibição dos frames
+                    time.sleep(frame_time)
+                else:
+                    st.write("Vídeo pausado.")
+
+            video.release()
+
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao processar o vídeo: {e}")
+        finally:
+            # Tente remover o arquivo temporário
+            try:
+                os.remove(temp_file_path)
+                st.write(f"Arquivo temporário removido: {temp_file_path}")
+            except Exception as e:
+                st.error(f"Ocorreu um erro ao remover o arquivo temporário: {e}")
 
 if __name__ == "__main__":
     show_video_detection()
