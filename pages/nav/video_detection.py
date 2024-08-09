@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import time
 
-# Carregue o modelo usando OpenCV (Caffe)
+# Carrega o modelo usando OpenCV (Caffe)
 net = cv2.dnn.readNetFromCaffe(
     'MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
 
@@ -21,23 +21,25 @@ def detect_objects(frame, confidence_threshold):
     net.setInput(blob)
     detections = net.forward()
 
-    # Verifique se há detections antes de processar
+    # Verifique se há detections e se o shape é apropriado
     if detections.shape[2] > 0:
         for i in range(detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
-            class_id = int(detections[0, 0, i, 1])
+            # Verificar se o índice está dentro do intervalo permitido
+            if i < detections.shape[2]:
+                confidence = detections[0, 0, i, 2]
+                class_id = int(detections[0, 0, i, 1])
 
-            if confidence > confidence_threshold:
-                class_name = CLASSES[class_id]
-                percentage = confidence * 100
-                label = f"{class_name}: {percentage:.2f}%"
-                box = detections[0, 0, i, 3:7] * np.array(
-                    [frame.shape[1], frame.shape[0], frame.shape[1], frame.shape[0]])
-                (startX, startY, endX, endY) = box.astype("int")
-                cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
-                y = startY - 15 if startY - 15 > 15 else startY + 15
-                cv2.putText(frame, label, (startX, y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                if confidence > confidence_threshold:
+                    class_name = CLASSES[class_id] if class_id < len(CLASSES) else "desconhecido"
+                    percentage = confidence * 100
+                    label = f"{class_name}: {percentage:.2f}%"
+                    box = detections[0, 0, i, 3:7] * np.array(
+                        [frame.shape[1], frame.shape[0], frame.shape[1], frame.shape[0]])
+                    (startX, startY, endX, endY) = box.astype("int")
+                    cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
+                    y = startY - 15 if startY - 15 > 15 else startY + 15
+                    cv2.putText(frame, label, (startX, y),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
     return frame
 
@@ -75,14 +77,12 @@ def show_video_detection():
             while video.isOpened():
                 if st.session_state.playing:
                     ret, frame = video.read()
-                    if not ret:
+                    if not ret or frame is None:
                         st.write("Fim do vídeo.")
                         break
 
-                    # Verificação adicional para garantir que o frame não seja None
-                    if frame is not None:
-                        result_frame = detect_objects(frame, confidence_threshold=0.2)
-                        stframe.image(result_frame, channels="BGR", use_column_width=True)
+                    result_frame = detect_objects(frame, confidence_threshold=0.2)
+                    stframe.image(result_frame, channels="BGR", use_column_width=True)
 
                     # Ajusta o tempo de exibição dos frames
                     time.sleep(frame_time)
