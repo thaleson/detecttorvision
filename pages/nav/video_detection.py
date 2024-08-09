@@ -50,9 +50,12 @@ def show_video_detection():
             st.error(f"Não foi possível abrir o arquivo de vídeo: {temp_filename}")
             return
         
-        temp_output_filename = tempfile.mktemp(suffix=".avi")
+        # Verificar tamanho do frame
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
-        out = cv2.VideoWriter(temp_output_filename, fourcc, 30.0, (int(cap.get(3)), int(cap.get(4))))
+        temp_output_filename = tempfile.mktemp(suffix=".avi")
+        out = cv2.VideoWriter(temp_output_filename, fourcc, 30.0, (frame_width, frame_height))
         
         st.write("Processando vídeo...")
 
@@ -63,11 +66,14 @@ def show_video_detection():
                 break
             
             processed_frame = detect_objects(frame, net, confidence_threshold)
+            # Exibir o frame processado para depuração
+            st.image(processed_frame, channels="BGR")
             out.write(processed_frame)
         
         cap.release()
         out.release()
         
+        # Exibir vídeo processado
         st.video(temp_output_filename)
         
         if os.path.exists(temp_filename):
