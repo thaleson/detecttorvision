@@ -3,6 +3,7 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
+import time
 
 # Carregue o modelo usando OpenCV (Caffe)
 def load_model():
@@ -62,12 +63,14 @@ def show_video_controls():
     st.write(st.session_state.video_status)
 
 def show_video_detection():
-    st.title("Detecção de Objetos em Vídeo🕵️‍♂️🎥")
+    st.title("Detecção de Objetos em Vídeo🕵️‍♂🎥")
 
     if 'playing' not in st.session_state:
         st.session_state.playing = False
     if 'video_status' not in st.session_state:
         st.session_state.video_status = ""
+    if 'video_position' not in st.session_state:
+        st.session_state.video_position = 0
     if 'video_file' not in st.session_state:
         st.session_state.video_file = None
     if 'video_capture' not in st.session_state:
@@ -83,10 +86,10 @@ def show_video_detection():
         if st.session_state.video_capture:
             st.session_state.video_capture.release()
             st.session_state.video_capture = None
-        st.session_state.video_file = None
-        st.session_state.playing = True
+        st.session_state.video_position = 0
+        st.session_state.playing = False
 
-        st.write("Processando vídeo...")
+  
 
         video, temp_filename = initialize_video(uploaded_file)
         st.session_state.video_capture = video
@@ -97,14 +100,27 @@ def show_video_detection():
         # Carregar o modelo
         net = load_model()
 
+        # Controles de vídeo
+        show_video_controls()
+
+        frame_rate = video.get(cv2.CAP_PROP_FPS)
+
         while video.isOpened():
             if st.session_state.playing:
+                video.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.video_position)
                 ret, frame = video.read()
                 if not ret:
                     break
 
                 result_frame = detect_objects(frame, net, confidence_threshold=0.2)
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
+
+                # Atualiza a posição do vídeo
+                st.session_state.video_position = int(video.get(cv2.CAP_PROP_POS_FRAMES))
+
+                # Ajusta a reprodução de acordo com a velocidade selecionada
+                wait_time = (1 / frame_rate)  # Velocidade fixa
+                time.sleep(wait_time)
             else:
                 time.sleep(0.1)
 
