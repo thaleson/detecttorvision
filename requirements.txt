@@ -34,7 +34,7 @@ mdurl
 ml-dtypes
 namex
 numpy
-opencv-python==4.6.0.72
+opencv-python
 opt-einsum
 optree
 packaging
