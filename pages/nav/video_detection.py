@@ -29,7 +29,7 @@ def show_video_detection():
         with open(temp_filename, "wb") as f:
             f.write(uploaded_file.read())
         
-        # Usando os nomes corretos dos arquivos
+        # Caminhos dos arquivos de modelo
         prototxt_path = 'MobileNetSSD_deploy.prototxt.txt'
         caffemodel_path = 'MobileNetSSD_deploy.caffemodel'
         
@@ -72,7 +72,10 @@ def show_video_detection():
         out.release()
         
         # Exibir vídeo processado
-        st.video(temp_output_filename)
+        if os.path.exists(temp_output_filename):
+            st.video(temp_output_filename)
+        else:
+            st.error("O vídeo processado não foi encontrado.")
 
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
