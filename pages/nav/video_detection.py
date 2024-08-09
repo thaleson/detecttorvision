@@ -1,10 +1,9 @@
+import streamlit as st
 import cv2
 import numpy as np
-import streamlit as st
 import tempfile
 import os
 from pytube import YouTube
-from pytube.exceptions import PytubeError
 
 def detect_objects(frame, net, confidence_threshold):
     (h, w) = frame.shape[:2]
@@ -22,32 +21,20 @@ def detect_objects(frame, net, confidence_threshold):
             cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
     return frame
 
-def download_video_from_youtube(url):
-    try:
-        yt = YouTube(url)
-        video_stream = yt.streams.filter(file_extension='mp4').first()
-        if video_stream is None:
-            raise ValueError("Não foi possível encontrar um fluxo de vídeo MP4.")
-        temp_filename = tempfile.mktemp(suffix=".mp4")
-        video_stream.download(filename=temp_filename)
-        return temp_filename
-    except PytubeError as e:
-        st.error(f"Erro ao usar pytube: {e}")
-        return None
-    except ValueError as e:
-        st.error(f"Erro de valor: {e}")
-        return None
-    except Exception as e:
-        st.error(f"Erro desconhecido ao baixar o vídeo do YouTube: {e}")
-        return None
-
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo")
 
-    url = st.text_input("Cole a URL do vídeo do YouTube")
+    # Inserir URL do YouTube
+    url = st.text_input("Cole o URL do vídeo do YouTube")
+    
     if url:
-        temp_filename = download_video_from_youtube(url)
-        if not temp_filename:
+        try:
+            yt = YouTube(url)
+            video_stream = yt.streams.filter(file_extension='mp4').first()
+            temp_filename = tempfile.mktemp(suffix=".mp4")
+            video_stream.download(filename=temp_filename)
+        except Exception as e:
+            st.error(f"Erro ao baixar o vídeo do YouTube: {e}")
             return
 
         # Caminhos dos arquivos de modelo
@@ -74,7 +61,7 @@ def show_video_detection():
         # Verificar tamanho do frame
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # Codec para MP4
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         temp_output_filename = tempfile.mktemp(suffix=".mp4")
         out = cv2.VideoWriter(temp_output_filename, fourcc, 30.0, (frame_width, frame_height))
 
@@ -98,7 +85,6 @@ def show_video_detection():
         else:
             st.error("O vídeo processado não foi encontrado.")
 
-        # Limpeza de arquivos temporários
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
         if os.path.exists(temp_output_filename):
