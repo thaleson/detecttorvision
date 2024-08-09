@@ -1,52 +1,28 @@
-import os
-import tempfile
-import streamlit as st
 import cv2
 import numpy as np
+import streamlit as st
 
-# Carregue o modelo usando OpenCV (Caffe)
-net = cv2.dnn.readNetFromCaffe(
-    'MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
-
-# Mapeamento de classes
-CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
-           "porta", "ônibus", "carro", "gato", "cadeira", "vaca", "mesa de jantar",
-           "cachorro", "cavalo", "moto", "pessoa", "planta em vaso", "ovelha",
-           "sofá", "trem", "monitor de TV"]
-
-def detect_objects(frame, confidence_threshold):
-    if frame is None:
-        return frame
-    
-    blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
+def detect_objects(frame, net, confidence_threshold):
+    (h, w) = frame.shape[:2]
+    blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1/255.0, (300, 300), swapRB=True, crop=False)
     net.setInput(blob)
     detections = net.forward()
-
-    for i in range(detections.shape[2]):
+    
+    for i in range(0, detections.shape[2]):
         confidence = detections[0, 0, i, 2]
-        class_id = int(detections[0, 0, i, 1])
-
         if confidence > confidence_threshold:
-            class_name = CLASSES[class_id]
-            percentage = confidence * 100
-            label = f"{class_name}: {percentage:.2f}%"
-            box = detections[0, 0, i, 3:7] * np.array(
-                [frame.shape[1], frame.shape[0], frame.shape[1], frame.shape[0]])
+            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            box = np.clip(box, 0, [w, h, w, h])
             (startX, startY, endX, endY) = box.astype("int")
-
-            # Verifique se as coordenadas estão dentro dos limites da imagem
             startX = max(0, startX)
             startY = max(0, startY)
-            endX = min(frame.shape[1], endX)
-            endY = min(frame.shape[0], endY)
-
-            # Verifique se as coordenadas são válidas
-            if startX < endX and startY < endY:
-                cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
-                y = startY - 15 if startY - 15 > 15 else startY + 15
-                cv2.putText(frame, label, (startX, y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
+            endX = min(w, endX)
+            endY = min(h, endY)
+            cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
+            label = f"{confidence:.2f}"
+            y = startY - 15 if startY - 15 > 15 else startY + 15
+            cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+    
     return frame
 
 def show_video_detection():
@@ -56,50 +32,35 @@ def show_video_detection():
         st.session_state.playing = False
     if 'video_file' not in st.session_state:
         st.session_state.video_file = None
-    if 'processed_file' not in st.session_state:
-        st.session_state.processed_file = None
-
-    uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
-
+    
+    uploaded_file = st.file_uploader("Escolha um arquivo de vídeo", type=["mp4", "avi"])
     if uploaded_file is not None:
-        # Salvar arquivo temporário
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
-            tfile.write(uploaded_file.read())
-            temp_filename = tfile.name
-            st.session_state.video_file = temp_filename
+        st.session_state.video_file = uploaded_file
+    
+    if st.session_state.video_file:
+        cap = cv2.VideoCapture(st.session_state.video_file)
+        net = cv2.dnn.readNetFromCaffe('deploy.prototxt', 'weights.caffemodel')
+        confidence_threshold = 0.5
 
-        # Processar o vídeo e salvar o arquivo processado
-        processed_filename = tempfile.mktemp(suffix=".mp4")
-        st.session_state.processed_file = processed_filename
-
-        # Processar vídeo com OpenCV
-        cap = cv2.VideoCapture(temp_filename)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(processed_filename, fourcc, cap.get(cv2.CAP_PROP_FPS), 
-                              (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+        temp_filename = "temp_output.avi"
+        fourcc = cv2.VideoWriter_fourcc(*"XVID")
+        out = cv2.VideoWriter(temp_filename, fourcc, 20.0, (int(cap.get(3)), int(cap.get(4))))
 
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-
-            processed_frame = detect_objects(frame, confidence_threshold=0.2)
+            processed_frame = detect_objects(frame, net, confidence_threshold)
             out.write(processed_frame)
 
         cap.release()
         out.release()
 
-        # Exibir o vídeo processado
-        st.video(processed_filename)
+        st.video(temp_filename)
 
-        # Remoção do arquivo temporário com verificação de existência
         try:
             if os.path.exists(temp_filename):
                 os.remove(temp_filename)
-            if os.path.exists(processed_filename):
-                os.remove(processed_filename)
-        except PermissionError:
-            st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
+        except Exception as e:
+            st.error(f"Erro ao remover o arquivo temporário: {e}")
 
-if __name__ == "__main__":
-    show_video_detection()
