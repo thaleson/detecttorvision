@@ -3,6 +3,7 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
+import time
 
 # Carregue o modelo usando OpenCV (Caffe)
 net = cv2.dnn.readNetFromCaffe(
@@ -15,9 +16,6 @@ CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
            "sofá", "trem", "monitor de TV"]
 
 def detect_objects(frame, confidence_threshold):
-    if frame is None:
-        return frame
-    
     blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
     net.setInput(blob)
     detections = net.forward()
@@ -33,13 +31,6 @@ def detect_objects(frame, confidence_threshold):
             box = detections[0, 0, i, 3:7] * np.array(
                 [frame.shape[1], frame.shape[0], frame.shape[1], frame.shape[0]])
             (startX, startY, endX, endY) = box.astype("int")
-
-            # Verifique se as coordenadas estão dentro dos limites da imagem
-            startX = max(0, startX)
-            startY = max(0, startY)
-            endX = min(frame.shape[1], endX)
-            endY = min(frame.shape[0], endY)
-
             cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y),
@@ -52,50 +43,108 @@ def show_video_detection():
 
     if 'playing' not in st.session_state:
         st.session_state.playing = False
+    if 'video_status' not in st.session_state:
+        st.session_state.video_status = ""
+    if 'speed' not in st.session_state:
+        st.session_state.speed = 1.0
+    if 'video_position' not in st.session_state:
+        st.session_state.video_position = 0
     if 'video_file' not in st.session_state:
         st.session_state.video_file = None
-    if 'processed_file' not in st.session_state:
-        st.session_state.processed_file = None
+    if 'video_capture' not in st.session_state:
+        st.session_state.video_capture = None
+
+    # Aviso sobre as limitações do modelo
+    st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
 
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
     if uploaded_file is not None:
+        # Limpar estado anterior
+        if st.session_state.video_capture is not None:
+            st.session_state.video_capture.release()
+            st.session_state.video_capture = None
+        st.session_state.video_position = 0
+        st.session_state.playing = False
+
+        st.write("Processando vídeo...")
+
         # Salvar arquivo temporário
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
             tfile.write(uploaded_file.read())
             temp_filename = tfile.name
             st.session_state.video_file = temp_filename
 
-        # Processar o vídeo e salvar o arquivo processado
-        processed_filename = tempfile.mktemp(suffix=".mp4")
-        st.session_state.processed_file = processed_filename
+        # Inicializar captura de vídeo
+        st.session_state.video_capture = cv2.VideoCapture(temp_filename)
+        video = st.session_state.video_capture
+        stframe = st.empty()
 
-        # Processar vídeo com OpenCV
-        cap = cv2.VideoCapture(temp_filename)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(processed_filename, fourcc, cap.get(cv2.CAP_PROP_FPS), 
-                              (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+        # Controles de vídeo
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("▶️ Play"):
+                st.session_state.playing = True
+                st.session_state.video_status = "Vídeo em reprodução..."
+        with col2:
+            if st.button("⏸️ Pausar"):
+                st.session_state.playing = False
+                st.session_state.video_status = "Vídeo pausado."
+        with col3:
+            if st.button("⏹️ Parar"):
+                st.session_state.playing = False
+                st.session_state.video_status = "Vídeo parado."
+                video.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Volta ao início do vídeo
 
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        # Controles de velocidade
+        st.write("Controle de velocidade:")
+        col4, col5, col6 = st.columns(3)
+        with col4:
+            if st.button("0.5x"):
+                st.session_state.speed = 0.5
+                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
+        with col5:
+            if st.button("1x"):
+                st.session_state.speed = 1.0
+                st.session_state.video_status = "Velocidade ajustada para 1x."
+        with col6:
+            if st.button("1.5x"):
+                st.session_state.speed = 1.5
+                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
+        with col4:
+            if st.button("2x"):
+                st.session_state.speed = 2.0
+                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
 
-            processed_frame = detect_objects(frame, confidence_threshold=0.2)
-            out.write(processed_frame)
+        st.write(st.session_state.video_status)
 
-        cap.release()
-        out.release()
+        frame_rate = video.get(cv2.CAP_PROP_FPS)
 
-        # Exibir o vídeo processado
-        st.video(processed_filename)
+        while video.isOpened():
+            if st.session_state.playing:
+                video.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.video_position)
+                ret, frame = video.read()
+                if not ret:
+                    break
+
+                result_frame = detect_objects(frame, confidence_threshold=0.2)
+                stframe.image(result_frame, channels="BGR", use_column_width=True)
+
+                # Atualiza a posição do vídeo
+                st.session_state.video_position = int(video.get(cv2.CAP_PROP_POS_FRAMES))
+
+                # Ajusta a reprodução de acordo com a velocidade selecionada
+                wait_time = (1 / frame_rate) / st.session_state.speed
+                time.sleep(wait_time)
+            else:
+                time.sleep(0.1) 
+
+        video.release()
 
         # Remoção do arquivo temporário com verificação de existência
         try:
             if os.path.exists(temp_filename):
                 os.remove(temp_filename)
-            if os.path.exists(processed_filename):
-                os.remove(processed_filename)
         except PermissionError:
             st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
