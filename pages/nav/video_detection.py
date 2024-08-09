@@ -15,6 +15,9 @@ CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
            "sofá", "trem", "monitor de TV"]
 
 def detect_objects(frame, confidence_threshold):
+    # Reduz a resolução do frame
+    frame = cv2.resize(frame, (600, 400))  # Ajuste a resolução conforme necessário
+    
     blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
     net.setInput(blob)
     detections = net.forward()
