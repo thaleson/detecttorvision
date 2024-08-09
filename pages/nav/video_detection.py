@@ -29,7 +29,15 @@ def show_video_detection():
         with open(temp_filename, "wb") as f:
             f.write(uploaded_file.read())
         
-        net = cv2.dnn.readNetFromCaffe('MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
+        # Usando os nomes corretos dos arquivos
+        prototxt_path = 'MobileNetSSD_deploy.prototxt.txt'
+        caffemodel_path = 'MobileNetSSD_deploy.caffemodel'
+        
+        if not os.path.exists(prototxt_path) or not os.path.exists(caffemodel_path):
+            st.error(f"Não foi possível encontrar os arquivos do modelo: {prototxt_path} e/ou {caffemodel_path}")
+            return
+        
+        net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
         confidence_threshold = 0.5
         
         cap = cv2.VideoCapture(temp_filename)
