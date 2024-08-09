@@ -87,7 +87,7 @@ def show_video_detection():
         
         # Exibir vídeo processado
         if os.path.exists(temp_output_filename):
-            st.video(temp_output_filename, format="video/mp4")  # Certifique-se de usar o formato correto
+            st.video(temp_output_filename, format="video/mp4")
         else:
             st.error("O vídeo processado não foi encontrado.")
 
