@@ -66,8 +66,6 @@ def show_video_detection():
                 break
             
             processed_frame = detect_objects(frame, net, confidence_threshold)
-            # Exibir o frame processado para depuração
-            st.image(processed_frame, channels="BGR")
             out.write(processed_frame)
         
         cap.release()
@@ -75,7 +73,7 @@ def show_video_detection():
         
         # Exibir vídeo processado
         st.video(temp_output_filename)
-        
+
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
         if os.path.exists(temp_output_filename):
