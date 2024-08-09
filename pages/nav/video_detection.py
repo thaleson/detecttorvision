@@ -25,12 +25,11 @@ def show_video_detection():
     
     uploaded_file = st.file_uploader("Escolha um arquivo de vídeo", type=["mp4", "avi"])
     if uploaded_file:
-        # Cria um arquivo temporário para armazenar o vídeo carregado
-        temp_filename = tempfile.mktemp(suffix=".mp4")
+        temp_filename = tempfile.mktemp(suffix=".avi")
         with open(temp_filename, "wb") as f:
             f.write(uploaded_file.read())
         
-        # Caminhos dos arquivos de modelo
+        # Usando os nomes corretos dos arquivos
         prototxt_path = 'MobileNetSSD_deploy.prototxt.txt'
         caffemodel_path = 'MobileNetSSD_deploy.caffemodel'
         
@@ -54,8 +53,8 @@ def show_video_detection():
         # Verificar tamanho do frame
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # Codec para MP4
-        temp_output_filename = tempfile.mktemp(suffix=".mp4")
+        fourcc = cv2.VideoWriter_fourcc(*"XVID")
+        temp_output_filename = tempfile.mktemp(suffix=".avi")
         out = cv2.VideoWriter(temp_output_filename, fourcc, 30.0, (frame_width, frame_height))
         
         st.write("Processando vídeo...")
@@ -73,12 +72,8 @@ def show_video_detection():
         out.release()
         
         # Exibir vídeo processado
-        if os.path.exists(temp_output_filename):
-            st.video(temp_output_filename, format="video/mp4")  # Certifique-se de usar o formato correto
-        else:
-            st.error("O vídeo processado não foi encontrado.")
+        st.video(temp_output_filename)
 
-        # Limpeza de arquivos temporários
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
         if os.path.exists(temp_output_filename):
