@@ -21,21 +21,23 @@ def detect_objects(frame, confidence_threshold):
     net.setInput(blob)
     detections = net.forward()
 
-    for i in range(detections.shape[2]):
-        confidence = detections[0, 0, i, 2]
-        class_id = int(detections[0, 0, i, 1])
+    # Verifique se há detections antes de processar
+    if detections.shape[2] > 0:
+        for i in range(detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            class_id = int(detections[0, 0, i, 1])
 
-        if confidence > confidence_threshold:
-            class_name = CLASSES[class_id]
-            percentage = confidence * 100
-            label = f"{class_name}: {percentage:.2f}%"
-            box = detections[0, 0, i, 3:7] * np.array(
-                [frame.shape[1], frame.shape[0], frame.shape[1], frame.shape[0]])
-            (startX, startY, endX, endY) = box.astype("int")
-            cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
-            y = startY - 15 if startY - 15 > 15 else startY + 15
-            cv2.putText(frame, label, (startX, y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            if confidence > confidence_threshold:
+                class_name = CLASSES[class_id]
+                percentage = confidence * 100
+                label = f"{class_name}: {percentage:.2f}%"
+                box = detections[0, 0, i, 3:7] * np.array(
+                    [frame.shape[1], frame.shape[0], frame.shape[1], frame.shape[0]])
+                (startX, startY, endX, endY) = box.astype("int")
+                cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
+                y = startY - 15 if startY - 15 > 15 else startY + 15
+                cv2.putText(frame, label, (startX, y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
     return frame
 
@@ -77,8 +79,10 @@ def show_video_detection():
                         st.write("Fim do vídeo.")
                         break
 
-                    result_frame = detect_objects(frame, confidence_threshold=0.2)
-                    stframe.image(result_frame, channels="BGR", use_column_width=True)
+                    # Verificação adicional para garantir que o frame não seja None
+                    if frame is not None:
+                        result_frame = detect_objects(frame, confidence_threshold=0.2)
+                        stframe.image(result_frame, channels="BGR", use_column_width=True)
 
                     # Ajusta o tempo de exibição dos frames
                     time.sleep(frame_time)
