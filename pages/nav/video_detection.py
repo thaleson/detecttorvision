@@ -3,6 +3,7 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
+from PIL import Image
 import time
 
 # Carregue o modelo usando OpenCV (Caffe)
@@ -41,14 +42,6 @@ def detect_objects(frame, confidence_threshold):
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo")
 
-    # Inicialização do estado da sessão
-    if 'playing' not in st.session_state:
-        st.session_state.playing = False
-    if 'video_status' not in st.session_state:
-        st.session_state.video_status = ""
-    if 'speed' not in st.session_state:
-        st.session_state.speed = 1.0
-
     # Aviso sobre as limitações do modelo
     st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
 
@@ -62,60 +55,25 @@ def show_video_detection():
         video = cv2.VideoCapture(tfile.name)
         stframe = st.empty()
 
-        # Controles de vídeo alinhados com ícones
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("▶️ Play"):
-                st.session_state.playing = True
-                st.session_state.video_status = "Vídeo em reprodução..."
-        with col2:
-            if st.button("⏸️ Pausar"):
-                st.session_state.playing = False
-                st.session_state.video_status = "Vídeo pausado."
-        with col3:
-            if st.button("⏹️ Parar"):
-                st.session_state.playing = False
-                st.session_state.video_status = "Vídeo parado."
-                video.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Volta ao início do vídeo
-
-        # Controles de velocidade
-        st.write("Controle de velocidade:")
-        col4, col5, col6 = st.columns(3)
-        with col4:
-            if st.button("0.5x"):
-                st.session_state.speed = 0.5
-                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
-        with col5:
-            if st.button("1x"):
-                st.session_state.speed = 1.0
-                st.session_state.video_status = "Velocidade ajustada para 1x."
-        with col6:
-            if st.button("1.5x"):
-                st.session_state.speed = 1.5
-                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
-        with col4:
-            if st.button("2x"):
-                st.session_state.speed = 2.0
-                st.session_state.video_status = f"Velocidade ajustada para {st.session_state.speed}x."
-
-        st.write(st.session_state.video_status)
-
         frame_rate = video.get(cv2.CAP_PROP_FPS)
+        frame_interval = 1 / frame_rate
 
-        # Ajuste a taxa de quadros e a velocidade
+        # Cria um buffer de frames
+        frames = []
         while video.isOpened():
-            if st.session_state.playing:
-                ret, frame = video.read()
-                if not ret:
-                    break
-
-                result_frame = detect_objects(frame, confidence_threshold=0.2)
-                stframe.image(result_frame, channels="BGR", use_column_width=True)
-
-                # Espera para ajustar a reprodução de acordo com a velocidade selecionada
-                time.sleep(1 / (frame_rate * st.session_state.speed))
+            ret, frame = video.read()
+            if not ret:
+                break
+            frames.append(frame)
 
         video.release()
+
+        # Reproduz os frames continuamente
+        while True:
+            for frame in frames:
+                result_frame = detect_objects(frame, confidence_threshold=0.2)
+                stframe.image(result_frame, channels="BGR", use_column_width=True)
+                time.sleep(frame_interval)
 
         # Tratamento para o erro PermissionError
         try:
