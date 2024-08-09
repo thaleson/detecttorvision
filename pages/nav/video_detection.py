@@ -3,6 +3,7 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
+import time  # Importa o módulo time
 
 # Carregue o modelo usando OpenCV (Caffe)
 net = cv2.dnn.readNetFromCaffe(
@@ -64,6 +65,7 @@ def show_video_detection():
 
         # Ajuste da taxa de quadros
         frame_rate = video.get(cv2.CAP_PROP_FPS)
+        frame_time = 1.0 / frame_rate  # Tempo para exibir cada frame
 
         while video.isOpened():
             if st.session_state.playing:
@@ -74,8 +76,8 @@ def show_video_detection():
                 result_frame = detect_objects(frame, confidence_threshold=0.2)
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
 
-                # Ajuste da reprodução de acordo com a taxa de quadros
-                cv2.waitKey(int(1000 / frame_rate))
+                # Ajusta o tempo de exibição dos frames
+                time.sleep(frame_time)
 
         video.release()
 
