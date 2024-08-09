@@ -57,10 +57,12 @@ def show_video_detection():
     if uploaded_file is not None:
         st.write("Processando vídeo...")
         
+        # Cria um arquivo temporário de forma segura
         with tempfile.NamedTemporaryFile(delete=False) as tfile:
             tfile.write(uploaded_file.read())
+            temp_filename = tfile.name  # Salva o nome do arquivo temporário
 
-        video = cv2.VideoCapture(tfile.name)
+        video = cv2.VideoCapture(temp_filename)
         stframe = st.empty()
 
         # Controles de vídeo alinhados com ícones
@@ -113,8 +115,6 @@ def show_video_detection():
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
 
                 # Ajusta a reprodução de acordo com a velocidade selecionada
-                current_time = time.time()
-                st.session_state.previous_time = current_time
                 wait_time = 1 / (frame_rate * st.session_state.speed)
 
                 # Evita que o loop bloqueie a execução
@@ -127,7 +127,7 @@ def show_video_detection():
 
         # Tratamento para o erro PermissionError
         try:
-            os.remove(tfile.name)
+            os.remove(temp_filename)
         except PermissionError:
             st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
