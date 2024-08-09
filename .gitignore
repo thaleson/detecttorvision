@@ -1,0 +1,64 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.db
+*.sqlite3
+*.log
+*.env
+*.venv
+*.pytest_cache/
+.coverage
+*.tox/
+*.nox/
+*.hypothesis/
+.pytest_cache/
+cover/
+*.egg-info/
+dist/
+build/
+*.egg
+*.DS_Store
+
+# Conda
+envs/
+*.yml
+*.yaml
+*.condarc
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# VSCode
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+*.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+
+
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Other
+*.zip
+*.tar.gz
+*.rar
+*.7z
