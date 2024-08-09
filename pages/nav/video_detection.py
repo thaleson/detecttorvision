@@ -51,7 +51,15 @@ def show_video_controls():
         if st.button("▶️ Play"):
             st.session_state.playing = True
             st.session_state.video_status = "Vídeo em reprodução..."
- 
+    with col2:
+        if st.button("⏸️ Pause"):
+            st.session_state.playing = False
+            st.session_state.video_status = "Vídeo pausado."
+    with col3:
+        if st.button("⏹️ Stop"):
+            st.session_state.playing = False
+            st.session_state.video_status = "Vídeo parado."
+            st.session_state.video_position = 0
 
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo🕵️‍♂🎥")
@@ -79,8 +87,6 @@ def show_video_detection():
             st.session_state.video_capture = None
         st.session_state.video_position = 0
         st.session_state.playing = False
-
-  
 
         video, temp_filename = initialize_video(uploaded_file)
         st.session_state.video_capture = video
