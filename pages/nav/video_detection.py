@@ -101,8 +101,9 @@ def show_video_detection():
         st.write(st.session_state.video_status)
 
         frame_rate = video.get(cv2.CAP_PROP_FPS)
+        frame_interval = 1 / (frame_rate * st.session_state.speed)
+        previous_frame_time = time.time()
 
-        # Ajuste a taxa de quadros e a velocidade
         while video.isOpened():
             if st.session_state.playing:
                 ret, frame = video.read()
@@ -112,8 +113,12 @@ def show_video_detection():
                 result_frame = detect_objects(frame, confidence_threshold=0.2)
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
 
-                # Espera para ajustar a reprodução de acordo com a velocidade selecionada
-                time.sleep(1 / (frame_rate * st.session_state.speed))
+                # Calcula o tempo de espera para sincronizar a taxa de quadros
+                current_frame_time = time.time()
+                elapsed_time = current_frame_time - previous_frame_time
+                if elapsed_time < frame_interval:
+                    time.sleep(frame_interval - elapsed_time)
+                previous_frame_time = current_frame_time
 
         video.release()
 
