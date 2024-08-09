@@ -3,7 +3,7 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
-import time
+from PIL import Image
 
 # Carregue o modelo usando OpenCV (Caffe)
 net = cv2.dnn.readNetFromCaffe(
@@ -102,25 +102,24 @@ def show_video_detection():
 
         frame_rate = video.get(cv2.CAP_PROP_FPS)
         frame_interval = 1 / (frame_rate * st.session_state.speed)
-        previous_frame_time = time.time()
 
+        # Cria um buffer de frames
+        frames = []
         while video.isOpened():
-            if st.session_state.playing:
-                ret, frame = video.read()
-                if not ret:
-                    break
-
-                result_frame = detect_objects(frame, confidence_threshold=0.2)
-                stframe.image(result_frame, channels="BGR", use_column_width=True)
-
-                # Calcula o tempo de espera para sincronizar a taxa de quadros
-                current_frame_time = time.time()
-                elapsed_time = current_frame_time - previous_frame_time
-                if elapsed_time < frame_interval:
-                    time.sleep(frame_interval - elapsed_time)
-                previous_frame_time = current_frame_time
+            ret, frame = video.read()
+            if not ret:
+                break
+            frames.append(frame)
 
         video.release()
+
+        # Processa e exibe os frames
+        for frame in frames:
+            if st.session_state.playing:
+                result_frame = detect_objects(frame, confidence_threshold=0.2)
+                stframe.image(result_frame, channels="BGR", use_column_width=True)
+                # Espera antes de exibir o próximo frame
+                st.time.sleep(frame_interval)
 
         # Tratamento para o erro PermissionError
         try:
