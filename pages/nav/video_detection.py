@@ -48,6 +48,8 @@ def show_video_detection():
         st.session_state.video_status = ""
     if 'speed' not in st.session_state:
         st.session_state.speed = 1.0
+    if 'video_position' not in st.session_state:
+        st.session_state.video_position = 0
 
     # Aviso sobre as limitações do modelo
     st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
@@ -56,8 +58,8 @@ def show_video_detection():
 
     if uploaded_file is not None:
         st.write("Processando vídeo...")
-        
-        # Cria um arquivo temporário de forma segura
+
+        # Cria e usa um arquivo temporário
         with tempfile.NamedTemporaryFile(delete=False) as tfile:
             tfile.write(uploaded_file.read())
             temp_filename = tfile.name  # Salva o nome do arquivo temporário
@@ -105,8 +107,6 @@ def show_video_detection():
 
         frame_rate = video.get(cv2.CAP_PROP_FPS)
 
-        previous_time = time.time()
-
         while video.isOpened():
             if st.session_state.playing:
                 ret, frame = video.read()
@@ -116,25 +116,20 @@ def show_video_detection():
                 result_frame = detect_objects(frame, confidence_threshold=0.2)
                 stframe.image(result_frame, channels="BGR", use_column_width=True)
 
-                current_time = time.time()
-                elapsed_time = current_time - previous_time
+                # Ajusta a reprodução de acordo com a velocidade selecionada
                 wait_time = (1 / frame_rate) / st.session_state.speed
-
-                if elapsed_time < wait_time:
-                    time.sleep(wait_time - elapsed_time)
-                
-                previous_time = time.time()
+                time.sleep(wait_time)
             else:
                 time.sleep(0.1)  # Evita o uso excessivo de CPU quando o vídeo está pausado
 
         video.release()
 
         # Remoção do arquivo temporário com verificação de existência
-        if os.path.exists(temp_filename):
-            try:
+        try:
+            if os.path.exists(temp_filename):
                 os.remove(temp_filename)
-            except PermissionError:
-                st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
+        except PermissionError:
+            st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
 if __name__ == "__main__":
     show_video_detection()
