@@ -60,7 +60,7 @@ def show_video_detection():
         st.write("Processando vídeo...")
 
         # Cria e usa um arquivo temporário
-        with tempfile.NamedTemporaryFile(delete=False) as tfile:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
             tfile.write(uploaded_file.read())
             temp_filename = tfile.name  # Salva o nome do arquivo temporário
 
