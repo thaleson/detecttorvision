@@ -3,7 +3,6 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
-from PIL import Image
 import time
 
 # Carregue o modelo usando OpenCV (Caffe)
@@ -58,22 +57,19 @@ def show_video_detection():
         frame_rate = video.get(cv2.CAP_PROP_FPS)
         frame_interval = 1 / frame_rate
 
-        # Cria um buffer de frames
-        frames = []
+        # Processa o vídeo em tempo real
         while video.isOpened():
             ret, frame = video.read()
             if not ret:
                 break
-            frames.append(frame)
+
+            result_frame = detect_objects(frame, confidence_threshold=0.2)
+            stframe.image(result_frame, channels="BGR", use_column_width=True)
+
+            # Ajusta a velocidade de reprodução
+            time.sleep(frame_interval)
 
         video.release()
-
-        # Reproduz os frames continuamente
-        while True:
-            for frame in frames:
-                result_frame = detect_objects(frame, confidence_threshold=0.2)
-                stframe.image(result_frame, channels="BGR", use_column_width=True)
-                time.sleep(frame_interval)
 
         # Tratamento para o erro PermissionError
         try:
