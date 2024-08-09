@@ -73,7 +73,7 @@ def show_video_detection():
         
         # Exibir vídeo processado
         if os.path.exists(temp_output_filename):
-            st.video(temp_output_filename)
+            st.video(temp_output_filename, format="video/avi")  # Certifique-se de usar o formato correto
         else:
             st.error("O vídeo processado não foi encontrado.")
 
