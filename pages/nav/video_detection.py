@@ -16,15 +16,14 @@ CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
            "sofá", "trem", "monitor de TV"]
 
 def detect_objects(frame, confidence_threshold):
-    frame = cv2.resize(frame, (600, 400))  # Ajuste a resolução conforme necessário
+    # Reduz a resolução do frame para melhorar a performance
+    frame = cv2.resize(frame, (320, 240))  # Reduz para 320x240 pixels
     blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
     net.setInput(blob)
     detections = net.forward()
 
-    # Verifique se há detections e se o shape é apropriado
     if detections.shape[2] > 0:
         for i in range(detections.shape[2]):
-            # Verificar se o índice está dentro do intervalo permitido
             if i < detections.shape[2]:
                 confidence = detections[0, 0, i, 2]
                 class_id = int(detections[0, 0, i, 1])
@@ -46,13 +45,11 @@ def detect_objects(frame, confidence_threshold):
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo")
 
-    # Inicialização do estado da sessão
     if 'playing' not in st.session_state:
         st.session_state.playing = True
     if 'video_status' not in st.session_state:
         st.session_state.video_status = ""
 
-    # Aviso sobre as limitações do modelo
     st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
 
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
@@ -60,7 +57,6 @@ def show_video_detection():
     if uploaded_file is not None:
         st.write("Processando vídeo...")
 
-        # Criação de um arquivo temporário
         with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as tfile:
             tfile.write(uploaded_file.read())
             temp_file_path = tfile.name
@@ -70,9 +66,8 @@ def show_video_detection():
             video = cv2.VideoCapture(temp_file_path)
             stframe = st.empty()
 
-            # Ajuste da taxa de quadros
             frame_rate = video.get(cv2.CAP_PROP_FPS)
-            frame_time = 1.0 / frame_rate  # Tempo para exibir cada frame
+            frame_time = 1.0 / frame_rate
 
             while video.isOpened():
                 if st.session_state.playing:
@@ -84,7 +79,6 @@ def show_video_detection():
                     result_frame = detect_objects(frame, confidence_threshold=0.2)
                     stframe.image(result_frame, channels="BGR", use_column_width=True)
 
-                    # Ajusta o tempo de exibição dos frames
                     time.sleep(frame_time)
                 else:
                     st.write("Vídeo pausado.")
@@ -94,7 +88,6 @@ def show_video_detection():
         except Exception as e:
             st.error(f"Ocorreu um erro ao processar o vídeo: {e}")
         finally:
-            # Tente remover o arquivo temporário
             try:
                 os.remove(temp_file_path)
                 st.write(f"Arquivo temporário removido: {temp_file_path}")
