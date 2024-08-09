@@ -41,7 +41,6 @@ def detect_objects(frame, confidence_threshold):
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo")
 
-    # Inicialização do estado da sessão
     if 'playing' not in st.session_state:
         st.session_state.playing = False
     if 'video_status' not in st.session_state:
@@ -50,6 +49,10 @@ def show_video_detection():
         st.session_state.speed = 1.0
     if 'video_position' not in st.session_state:
         st.session_state.video_position = 0
+    if 'video_file' not in st.session_state:
+        st.session_state.video_file = None
+    if 'video_capture' not in st.session_state:
+        st.session_state.video_capture = None
 
     # Aviso sobre as limitações do modelo
     st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
@@ -57,17 +60,27 @@ def show_video_detection():
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
     if uploaded_file is not None:
+        # Limpar estado anterior
+        if st.session_state.video_capture is not None:
+            st.session_state.video_capture.release()
+            st.session_state.video_capture = None
+        st.session_state.video_position = 0
+        st.session_state.playing = False
+
         st.write("Processando vídeo...")
 
-        # Cria e usa um arquivo temporário
+        # Salvar arquivo temporário
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
             tfile.write(uploaded_file.read())
-            temp_filename = tfile.name  # Salva o nome do arquivo temporário
+            temp_filename = tfile.name
+            st.session_state.video_file = temp_filename
 
-        video = cv2.VideoCapture(temp_filename)
+        # Inicializar captura de vídeo
+        st.session_state.video_capture = cv2.VideoCapture(temp_filename)
+        video = st.session_state.video_capture
         stframe = st.empty()
 
-        # Controles de vídeo alinhados com ícones
+        # Controles de vídeo
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("▶️ Play"):
@@ -107,7 +120,6 @@ def show_video_detection():
 
         frame_rate = video.get(cv2.CAP_PROP_FPS)
 
-        # Exibe o vídeo
         while video.isOpened():
             if st.session_state.playing:
                 video.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.video_position)
@@ -125,7 +137,7 @@ def show_video_detection():
                 wait_time = (1 / frame_rate) / st.session_state.speed
                 time.sleep(wait_time)
             else:
-                time.sleep(0.1)  # Evita o uso excessivo de CPU quando o vídeo está pausado
+                time.sleep(0.1) 
 
         video.release()
 
