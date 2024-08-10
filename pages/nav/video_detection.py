@@ -1,6 +1,5 @@
 import os
 import tempfile
-import time
 import streamlit as st
 import cv2
 import numpy as np
@@ -45,39 +44,40 @@ def show_video_detection():
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
     if uploaded_file:
-        st.session_state.video_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-        with open(st.session_state.video_file, "wb") as f:
+        # Salvar o vídeo carregado em um arquivo temporário
+        video_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        with open(video_file_path, "wb") as f:
             f.write(uploaded_file.read())
 
         # Carregar o modelo
         net = load_model()
 
-        # Processar o vídeo frame a frame e exibir em tempo real
-        video = cv2.VideoCapture(st.session_state.video_file)
+        # Processar o vídeo e salvar em um arquivo temporário
+        video = cv2.VideoCapture(video_file_path)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        processed_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        out = cv2.VideoWriter(processed_video_path, fourcc, 30.0, (int(video.get(3)), int(video.get(4))))
 
-        stframe = st.empty()
-
-        while video.isOpened():
+        while True:
             ret, frame = video.read()
             if not ret:
                 break
 
-            # Detectar objetos no frame
             result_frame = detect_objects(frame, net, confidence_threshold=0.2)
-
-            # Converter o frame para exibição com Streamlit
-            result_frame_rgb = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
-            stframe.image(result_frame_rgb, channels="RGB")
-
-            # Pequena pausa para garantir que o vídeo não avance muito rápido
-            time.sleep(0.03)
+            out.write(result_frame)
 
         video.release()
+        out.release()
 
-        # Remover o arquivo temporário
+        # Exibir o vídeo processado
+        st.video(processed_video_path, format="video/mp4", start_time=0)
+
+        # Remover o arquivo temporário com verificação de existência
         try:
-            if os.path.exists(st.session_state.video_file):
-                os.remove(st.session_state.video_file)
+            if os.path.exists(video_file_path):
+                os.remove(video_file_path)
+            if os.path.exists(processed_video_path):
+                os.remove(processed_video_path)
         except PermissionError:
             st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
