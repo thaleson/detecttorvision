@@ -1,20 +1,14 @@
 import os
 import tempfile
+import time
 import streamlit as st
 import cv2
 import numpy as np
 
 # Carregue o modelo usando OpenCV (Caffe)
 def load_model():
-    try:
-        net = cv2.dnn.readNetFromCaffe(
-            'MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
-        if net.empty():
-            st.error("Erro ao carregar o modelo. Verifique os arquivos do modelo.")
-        return net
-    except Exception as e:
-        st.error(f"Erro ao carregar o modelo: {e}")
-        return None
+    return cv2.dnn.readNetFromCaffe(
+        'MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
 
 # Mapeamento de classes
 CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
@@ -23,8 +17,7 @@ CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
            "sofá", "trem", "monitor de TV"]
 
 def detect_objects(frame, net, confidence_threshold):
-    (h, w) = frame.shape[:2]
-    blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
+    blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
     net.setInput(blob)
     detections = net.forward()
 
@@ -36,13 +29,14 @@ def detect_objects(frame, net, confidence_threshold):
             class_name = CLASSES[class_id]
             percentage = confidence * 100
             label = f"{class_name}: {percentage:.2f}%"
-            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            box = detections[0, 0, i, 3:7] * np.array(
+                [frame.shape[1], frame.shape[0], frame.shape[1], frame.shape[0]])
             (startX, startY, endX, endY) = box.astype("int")
             cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-    
+
     return frame
 
 def show_video_detection():
@@ -54,33 +48,21 @@ def show_video_detection():
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
     if uploaded_file:
-        # Salvar o vídeo carregado em um arquivo temporário
-        temp_input = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-        with open(temp_input.name, "wb") as f:
+        st.session_state.video_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        with open(st.session_state.video_file, "wb") as f:
             f.write(uploaded_file.read())
-        
-        # Exibir o vídeo carregado
-        st.video(temp_input.name, format="video/mp4", start_time=0)
+
+        # Exibir o vídeo normalmente
+        st.video(st.session_state.video_file, format="video/mp4", start_time=0)
 
         # Carregar o modelo
         net = load_model()
 
-        # Verificar se o modelo foi carregado corretamente
-        if net is None or net.empty():
-            st.error("Modelo não carregado corretamente. Verifique o arquivo do modelo.")
-            return
-
-        # Processar o vídeo
-        video = cv2.VideoCapture(temp_input.name)
-        if not video.isOpened():
-            st.error("Não foi possível abrir o vídeo.")
-            return
-        
+        # Processar o vídeo em segundo plano e mostrar o vídeo processado
+        video = cv2.VideoCapture(st.session_state.video_file)
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-        out = cv2.VideoWriter(temp_output.name, fourcc, 30.0, 
-                              (int(video.get(cv2.CAP_PROP_FRAME_WIDTH)), 
-                               int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+        temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        out = cv2.VideoWriter(temp_output, fourcc, 30.0, (int(video.get(3)), int(video.get(4))))
 
         while True:
             ret, frame = video.read()
@@ -89,19 +71,19 @@ def show_video_detection():
 
             result_frame = detect_objects(frame, net, confidence_threshold=0.2)
             out.write(result_frame)
+            time.sleep(0.1)  # Pequena pausa para garantir que o modelo processe o frame
 
         video.release()
         out.release()
 
-        # Exibir o vídeo processado
-        st.video(temp_output.name, format="video/mp4", start_time=0)
+        st.video(temp_output, format="video/mp4", start_time=0)
 
-        # Remover os arquivos temporários
+        # Remover o arquivo temporário com verificação de existência
         try:
-            if os.path.exists(temp_input.name):
-                os.remove(temp_input.name)
-            if os.path.exists(temp_output.name):
-                os.remove(temp_output.name)
+            if os.path.exists(st.session_state.video_file):
+                os.remove(st.session_state.video_file)
+            if os.path.exists(temp_output):
+                os.remove(temp_output)
         except PermissionError:
             st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
