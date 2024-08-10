@@ -38,45 +38,11 @@ def detect_objects(frame, net, confidence_threshold):
 
     return frame
 
-def process_video(video_path):
-    # Carregar o modelo
-    net = load_model()
-
-    # Processar o vídeo e salvar o vídeo processado em um arquivo temporário
-    temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-
-    video = cv2.VideoCapture(video_path)
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out = cv2.VideoWriter(temp_output, fourcc, 30.0, (int(video.get(3)), int(video.get(4))))
-
-    while True:
-        ret, frame = video.read()
-        if not ret:
-            break
-
-        result_frame = detect_objects(frame, net, confidence_threshold=0.2)
-        out.write(result_frame)
-
-    video.release()
-    out.release()
-
-    # Remover o arquivo temporário com verificação de existência
-    try:
-        if os.path.exists(temp_output):
-            os.remove(temp_output)
-    except PermissionError:
-        st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
-
-    return temp_output
-
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo🕵️‍♂🎥")
 
     if 'video_file' not in st.session_state:
         st.session_state.video_file = None
-
-    # Aviso sobre as limitações do modelo
-    st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
 
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
@@ -88,11 +54,36 @@ def show_video_detection():
         # Exibir o vídeo normalmente
         st.video(st.session_state.video_file, format="video/mp4", start_time=0)
 
-        # Processar o vídeo em segundo plano
-        processed_video_path = process_video(st.session_state.video_file)
+        # Carregar o modelo
+        net = load_model()
 
-        # Exibir o vídeo processado
-        st.video(processed_video_path, format="video/mp4", start_time=0)
+        # Processar o vídeo em segundo plano e mostrar o vídeo processado
+        video = cv2.VideoCapture(st.session_state.video_file)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        out = cv2.VideoWriter(temp_output, fourcc, 30.0, (int(video.get(3)), int(video.get(4))))
+
+        while True:
+            ret, frame = video.read()
+            if not ret:
+                break
+
+            result_frame = detect_objects(frame, net, confidence_threshold=0.2)
+            out.write(result_frame)
+
+        video.release()
+        out.release()
+
+        st.video(temp_output, format="video/mp4", start_time=0)
+
+        # Remover o arquivo temporário com verificação de existência
+        try:
+            if os.path.exists(st.session_state.video_file):
+                os.remove(st.session_state.video_file)
+            if os.path.exists(temp_output):
+                os.remove(temp_output)
+        except PermissionError:
+            st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
 if __name__ == "__main__":
     show_video_detection()
