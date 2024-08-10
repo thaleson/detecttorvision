@@ -43,26 +43,13 @@ def initialize_video(uploaded_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
         tfile.write(uploaded_file.read())
         temp_filename = tfile.name
-    return cv2.VideoCapture(temp_filename), temp_filename
-
-def show_video_controls():
-    if st.button("▶️ Play"):
-        st.session_state.playing = True
-        st.session_state.video_status = "Vídeo em reprodução..."
+    return temp_filename
 
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo🕵️‍♂🎥")
 
-    if 'playing' not in st.session_state:
-        st.session_state.playing = False
-    if 'video_status' not in st.session_state:
-        st.session_state.video_status = ""
-    if 'video_position' not in st.session_state:
-        st.session_state.video_position = 0
     if 'video_file' not in st.session_state:
         st.session_state.video_file = None
-    if 'video_capture' not in st.session_state:
-        st.session_state.video_capture = None
 
     # Aviso sobre as limitações do modelo
     st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
@@ -70,52 +57,43 @@ def show_video_detection():
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
     if uploaded_file:
-        # Limpar estado anterior
-        if st.session_state.video_capture:
-            st.session_state.video_capture.release()
-            st.session_state.video_capture = None
-        st.session_state.video_position = 0
-        st.session_state.playing = False
-
-        video, temp_filename = initialize_video(uploaded_file)
-        st.session_state.video_capture = video
-
-        # Inicializar exibição do frame
-        stframe = st.empty()
+        st.session_state.video_file = initialize_video(uploaded_file)
 
         # Carregar o modelo
         net = load_model()
 
-        # Controles de vídeo
-        show_video_controls()
+        # Exibir o vídeo
+        st.video(st.session_state.video_file, format="video/mp4", start_time=0)
 
-        frame_rate = video.get(cv2.CAP_PROP_FPS)
+        # Processar o vídeo em segundo plano
+        def process_video():
+            video = cv2.VideoCapture(st.session_state.video_file)
+            frame_rate = video.get(cv2.CAP_PROP_FPS)
 
-        while video.isOpened():
-            if st.session_state.playing:
-                video.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.video_position)
+            while video.isOpened():
                 ret, frame = video.read()
                 if not ret:
                     break
 
                 result_frame = detect_objects(frame, net, confidence_threshold=0.2)
-                stframe.image(result_frame, channels="BGR", use_column_width=True)
 
-                # Atualiza a posição do vídeo
-                st.session_state.video_position = int(video.get(cv2.CAP_PROP_POS_FRAMES))
+                # Exibir o frame processado
+                st.image(result_frame, channels="BGR", use_column_width=True)
 
-                # Ajusta a reprodução de acordo com a velocidade selecionada
+                # Ajustar a reprodução de acordo com a velocidade selecionada
                 wait_time = (1 / frame_rate)  # Velocidade fixa
                 time.sleep(wait_time)
-            else:
-                time.sleep(0.1)
 
-        video.release()
+            video.release()
+
+        # Executar o processamento em segundo plano
+        st.spinner("Processando o vídeo...")
+        process_video()
 
         # Remoção do arquivo temporário com verificação de existência
         try:
-            if os.path.exists(temp_filename):
-                os.remove(temp_filename)
+            if os.path.exists(st.session_state.video_file):
+                os.remove(st.session_state.video_file)
         except PermissionError:
             st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
