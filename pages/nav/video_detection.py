@@ -42,9 +42,6 @@ def detect_objects(frame, net, confidence_threshold):
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo🕵️‍♂🎥")
 
-    if 'video_file' not in st.session_state:
-        st.session_state.video_file = None
-
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
     if uploaded_file:
@@ -52,38 +49,35 @@ def show_video_detection():
         with open(st.session_state.video_file, "wb") as f:
             f.write(uploaded_file.read())
 
-        # Exibir o vídeo normalmente
-        st.video(st.session_state.video_file, format="video/mp4", start_time=0)
-
         # Carregar o modelo
         net = load_model()
 
-        # Processar o vídeo em segundo plano e mostrar o vídeo processado
+        # Processar o vídeo frame a frame e exibir em tempo real
         video = cv2.VideoCapture(st.session_state.video_file)
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-        out = cv2.VideoWriter(temp_output, fourcc, 30.0, (int(video.get(3)), int(video.get(4))))
 
-        while True:
+        stframe = st.empty()
+
+        while video.isOpened():
             ret, frame = video.read()
             if not ret:
                 break
 
+            # Detectar objetos no frame
             result_frame = detect_objects(frame, net, confidence_threshold=0.2)
-            out.write(result_frame)
-            time.sleep(0.1)  # Pequena pausa para garantir que o modelo processe o frame
+
+            # Converter o frame para exibição com Streamlit
+            result_frame_rgb = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
+            stframe.image(result_frame_rgb, channels="RGB")
+
+            # Pequena pausa para garantir que o vídeo não avance muito rápido
+            time.sleep(0.03)
 
         video.release()
-        out.release()
 
-        st.video(temp_output, format="video/mp4", start_time=0)
-
-        # Remover o arquivo temporário com verificação de existência
+        # Remover o arquivo temporário
         try:
             if os.path.exists(st.session_state.video_file):
                 os.remove(st.session_state.video_file)
-            if os.path.exists(temp_output):
-                os.remove(temp_output)
         except PermissionError:
             st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
