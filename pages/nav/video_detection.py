@@ -6,8 +6,11 @@ import numpy as np
 
 # Carregue o modelo usando OpenCV (Caffe)
 def load_model():
-    return cv2.dnn.readNetFromCaffe(
+    net = cv2.dnn.readNetFromCaffe(
         'MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
+    if net.empty():
+        st.error("Erro ao carregar o modelo.")
+    return net
 
 # Mapeamento de classes
 CLASSES = ["fundo", "avião", "bicicleta", "pássaro", "barco",
@@ -35,7 +38,7 @@ def detect_objects(frame, net, confidence_threshold):
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
+    
     return frame
 
 def show_video_detection():
@@ -57,6 +60,11 @@ def show_video_detection():
 
         # Carregar o modelo
         net = load_model()
+
+        # Verificar se o modelo foi carregado corretamente
+        if net.empty():
+            st.error("Modelo não carregado corretamente. Verifique o arquivo do modelo.")
+            return
 
         # Processar o vídeo
         video = cv2.VideoCapture(temp_input.name)
