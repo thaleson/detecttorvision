@@ -3,6 +3,7 @@ import tempfile
 import streamlit as st
 import cv2
 import numpy as np
+import time
 
 # Carregue o modelo usando OpenCV (Caffe)
 def load_model():
@@ -38,46 +39,83 @@ def detect_objects(frame, net, confidence_threshold):
 
     return frame
 
+def initialize_video(uploaded_file):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
+        tfile.write(uploaded_file.read())
+        temp_filename = tfile.name
+    return cv2.VideoCapture(temp_filename), temp_filename
+
+def show_video_controls():
+    if st.button("▶️ Play"):
+        st.session_state.playing = True
+        st.session_state.video_status = "Vídeo em reprodução..."
+
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo🕵️‍♂🎥")
+
+    if 'playing' not in st.session_state:
+        st.session_state.playing = False
+    if 'video_status' not in st.session_state:
+        st.session_state.video_status = ""
+    if 'video_position' not in st.session_state:
+        st.session_state.video_position = 0
+    if 'video_file' not in st.session_state:
+        st.session_state.video_file = None
+    if 'video_capture' not in st.session_state:
+        st.session_state.video_capture = None
+
+    # Aviso sobre as limitações do modelo
+    st.warning("Aviso: O modelo MobileNetSSD pode não detectar todos os objetos em vídeos e é limitado a vídeos apenas.")
 
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
     if uploaded_file:
-        # Salvar o vídeo carregado em um arquivo temporário
-        video_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-        with open(video_file_path, "wb") as f:
-            f.write(uploaded_file.read())
+        # Limpar estado anterior
+        if st.session_state.video_capture:
+            st.session_state.video_capture.release()
+            st.session_state.video_capture = None
+        st.session_state.video_position = 0
+        st.session_state.playing = False
+
+        video, temp_filename = initialize_video(uploaded_file)
+        st.session_state.video_capture = video
+
+        # Inicializar exibição do frame
+        stframe = st.empty()
 
         # Carregar o modelo
         net = load_model()
 
-        # Processar o vídeo e salvar em um arquivo temporário
-        video = cv2.VideoCapture(video_file_path)
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        processed_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-        out = cv2.VideoWriter(processed_video_path, fourcc, 30.0, (int(video.get(3)), int(video.get(4))))
+        # Controles de vídeo
+        show_video_controls()
 
-        while True:
-            ret, frame = video.read()
-            if not ret:
-                break
+        frame_rate = video.get(cv2.CAP_PROP_FPS)
 
-            result_frame = detect_objects(frame, net, confidence_threshold=0.2)
-            out.write(result_frame)
+        while video.isOpened():
+            if st.session_state.playing:
+                video.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.video_position)
+                ret, frame = video.read()
+                if not ret:
+                    break
+
+                result_frame = detect_objects(frame, net, confidence_threshold=0.2)
+                stframe.image(result_frame, channels="BGR", use_column_width=True)
+
+                # Atualiza a posição do vídeo
+                st.session_state.video_position = int(video.get(cv2.CAP_PROP_POS_FRAMES))
+
+                # Ajusta a reprodução de acordo com a velocidade selecionada
+                wait_time = (1 / frame_rate)  # Velocidade fixa
+                time.sleep(wait_time)
+            else:
+                time.sleep(0.1)
 
         video.release()
-        out.release()
 
-        # Exibir o vídeo processado
-        st.video(processed_video_path, format="video/mp4", start_time=0)
-
-        # Remover o arquivo temporário com verificação de existência
+        # Remoção do arquivo temporário com verificação de existência
         try:
-            if os.path.exists(video_file_path):
-                os.remove(video_file_path)
-            if os.path.exists(processed_video_path):
-                os.remove(processed_video_path)
+            if os.path.exists(temp_filename):
+                os.remove(temp_filename)
         except PermissionError:
             st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
 
