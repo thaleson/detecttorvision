@@ -1,9 +1,9 @@
 import os
 import tempfile
 import streamlit as st
+import ffmpeg
 import cv2
 import numpy as np
-import time
 
 # Carregue o modelo usando OpenCV (Caffe)
 def load_model():
@@ -39,11 +39,43 @@ def detect_objects(frame, net, confidence_threshold):
 
     return frame
 
-def initialize_video(uploaded_file):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
-        tfile.write(uploaded_file.read())
-        temp_filename = tfile.name
-    return temp_filename
+def process_video(video_path):
+    # Carregar o modelo
+    net = load_model()
+
+    # Processar o vídeo com ffmpeg e OpenCV
+    temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+
+    process = (
+        ffmpeg
+        .input(video_path)
+        .output(temp_output)
+        .run_async(pipe_stdout=True, pipe_stderr=True)
+    )
+
+    video = cv2.VideoCapture(video_path)
+    frame_rate = video.get(cv2.CAP_PROP_FPS)
+
+    while True:
+        ret, frame = video.read()
+        if not ret:
+            break
+
+        result_frame = detect_objects(frame, net, confidence_threshold=0.2)
+
+        # Atualizar o vídeo com o frame processado
+        # Aqui você pode usar o OpenCV para salvar os frames processados no arquivo `temp_output`
+
+    video.release()
+
+    # Remover o arquivo temporário com verificação de existência
+    try:
+        if os.path.exists(temp_output):
+            os.remove(temp_output)
+    except PermissionError:
+        st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
+
+    return temp_output
 
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo🕵️‍♂🎥")
@@ -57,45 +89,18 @@ def show_video_detection():
     uploaded_file = st.file_uploader("Escolha um vídeo", type=["mp4", "avi"])
 
     if uploaded_file:
-        st.session_state.video_file = initialize_video(uploaded_file)
+        st.session_state.video_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        with open(st.session_state.video_file, "wb") as f:
+            f.write(uploaded_file.read())
 
-        # Carregar o modelo
-        net = load_model()
-
-        # Exibir o vídeo
+        # Exibir o vídeo normalmente
         st.video(st.session_state.video_file, format="video/mp4", start_time=0)
 
         # Processar o vídeo em segundo plano
-        def process_video():
-            video = cv2.VideoCapture(st.session_state.video_file)
-            frame_rate = video.get(cv2.CAP_PROP_FPS)
+        processed_video_path = process_video(st.session_state.video_file)
 
-            while video.isOpened():
-                ret, frame = video.read()
-                if not ret:
-                    break
-
-                result_frame = detect_objects(frame, net, confidence_threshold=0.2)
-
-                # Exibir o frame processado
-                st.image(result_frame, channels="BGR", use_column_width=True)
-
-                # Ajustar a reprodução de acordo com a velocidade selecionada
-                wait_time = (1 / frame_rate)  # Velocidade fixa
-                time.sleep(wait_time)
-
-            video.release()
-
-        # Executar o processamento em segundo plano
-        st.spinner("Processando o vídeo...")
-        process_video()
-
-        # Remoção do arquivo temporário com verificação de existência
-        try:
-            if os.path.exists(st.session_state.video_file):
-                os.remove(st.session_state.video_file)
-        except PermissionError:
-            st.error("Não foi possível excluir o arquivo temporário. Ele será excluído quando o aplicativo for fechado.")
+        # Exibir o vídeo processado
+        st.video(processed_video_path, format="video/mp4", start_time=0)
 
 if __name__ == "__main__":
     show_video_detection()
