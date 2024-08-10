@@ -1,7 +1,6 @@
 import os
 import tempfile
 import streamlit as st
-import ffmpeg
 import cv2
 import numpy as np
 
@@ -43,18 +42,12 @@ def process_video(video_path):
     # Carregar o modelo
     net = load_model()
 
-    # Processar o vídeo com ffmpeg e OpenCV
+    # Processar o vídeo e salvar o vídeo processado em um arquivo temporário
     temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
 
-    process = (
-        ffmpeg
-        .input(video_path)
-        .output(temp_output)
-        .run_async(pipe_stdout=True, pipe_stderr=True)
-    )
-
     video = cv2.VideoCapture(video_path)
-    frame_rate = video.get(cv2.CAP_PROP_FPS)
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(temp_output, fourcc, 30.0, (int(video.get(3)), int(video.get(4))))
 
     while True:
         ret, frame = video.read()
@@ -62,11 +55,10 @@ def process_video(video_path):
             break
 
         result_frame = detect_objects(frame, net, confidence_threshold=0.2)
-
-        # Atualizar o vídeo com o frame processado
-        # Aqui você pode usar o OpenCV para salvar os frames processados no arquivo `temp_output`
+        out.write(result_frame)
 
     video.release()
+    out.release()
 
     # Remover o arquivo temporário com verificação de existência
     try:
