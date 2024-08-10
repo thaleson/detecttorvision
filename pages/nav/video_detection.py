@@ -46,20 +46,9 @@ def initialize_video(uploaded_file):
     return cv2.VideoCapture(temp_filename), temp_filename
 
 def show_video_controls():
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("▶️ Play"):
-            st.session_state.playing = True
-            st.session_state.video_status = "Vídeo em reprodução..."
-    with col2:
-        if st.button("⏸️ Pause"):
-            st.session_state.playing = False
-            st.session_state.video_status = "Vídeo pausado."
-    with col3:
-        if st.button("⏹️ Stop"):
-            st.session_state.playing = False
-            st.session_state.video_status = "Vídeo parado."
-            st.session_state.video_position = 0
+    if st.button("▶️ Play"):
+        st.session_state.playing = True
+        st.session_state.video_status = "Vídeo em reprodução..."
 
 def show_video_detection():
     st.title("Detecção de Objetos em Vídeo🕵️‍♂🎥")
